@@ -70,6 +70,7 @@ UpdateWorker::UpdateWorker(UpdateModel* model, QObject *parent)
     , m_powerInter(new PowerInter("com.deepin.daemon.Power", "/com/deepin/daemon/Power", QDBusConnection::sessionBus(), this))
     , m_networkInter(new Network("com.deepin.daemon.Network", "/com/deepin/daemon/Network", QDBusConnection::sessionBus(), this))
     , m_smartMirrorInter(new SmartMirrorInter("com.deepin.lastore.Smartmirror", "/com/deepin/lastore/Smartmirror", QDBusConnection::systemBus(), this))
+    , m_metadataInter(new AppStore("com.deepin.AppStore.Metadata", "/com/deepin/AppStore/Metadata", QDBusConnection::sessionBus(), this))
     , m_onBattery(true)
     , m_batteryPercentage(0)
     , m_baseProgress(0)
@@ -213,12 +214,16 @@ void UpdateWorker::setAppUpdateInfo(const AppUpdateInfoList &list)
         }
     }
 
-    for (AppUpdateInfo &val : value) {
-        const QString currentVer = val.m_currentVersion;
-        const QString lastVer = val.m_avilableVersion;
-        AppUpdateInfo info = getInfo(val, currentVer, lastVer);
+    const QString &queryReply = m_metadataInter->GetAppMetadataList(m_updatableApps);
+    const QVariantMap &queryMap = QJsonDocument::fromJson(queryReply.toUtf8()).object().toVariantMap();
 
-        infos << info;
+    QMap<QString, PackageInfo> packageMap;
+    for (auto it = queryMap.constBegin(); it != queryMap.constEnd(); ++it) {
+        packageMap[it.key()] = PackageInfo(it.value().toJsonObject());
+    }
+
+    for (const AppUpdateInfo &val : value) {
+        infos << getInfo(val, packageMap[val.m_packageId]);
     }
 
     qDebug() << pkgCount << appCount;
@@ -239,7 +244,7 @@ void UpdateWorker::setAppUpdateInfo(const AppUpdateInfoList &list)
             infos.removeAt(it - infos.constBegin());
         }
 
-        AppUpdateInfo ddeUpdateInfo = getInfo(dde, dde.m_currentVersion, dde.m_avilableVersion);
+        AppUpdateInfo ddeUpdateInfo = getInfo(dde, packageMap[""]);
         if(ddeUpdateInfo.m_changelog.isEmpty()) {
             ddeUpdateInfo.m_avilableVersion = tr("Patches");
             ddeUpdateInfo.m_changelog = tr("System patches");
@@ -642,48 +647,26 @@ DownloadInfo *UpdateWorker::calculateDownloadInfo(const AppUpdateInfoList &list)
     return ret;
 }
 
-AppUpdateInfo UpdateWorker::getInfo(const AppUpdateInfo &packageInfo, const QString &currentVersion, const QString &lastVersion) const
+AppUpdateInfo UpdateWorker::getInfo(const AppUpdateInfo &packageInfo, PackageInfo &info) const
 {
-    auto fetchVersionedChangelog = [](QJsonObject changelog, QString & destVersion) {
+    AppUpdateInfo package = std::move(packageInfo);
+    package.m_icon = info.icon;
 
-        for (QString version : changelog.keys()) {
-            if (version == destVersion) {
-                return changelog.value(version).toString();
-            }
-        }
+    QList<Versions> versions = info.locale[QLocale::system().name()].versions;
 
-        return QStringLiteral("");
-    };
-
-    QString metadataDir = "/lastore/metadata/" + packageInfo.m_packageId;
-
-    AppUpdateInfo info;
-    info.m_packageId = packageInfo.m_packageId;
-    info.m_name = packageInfo.m_name;
-    info.m_currentVersion = currentVersion;
-    info.m_avilableVersion = lastVersion;
-    info.m_icon = metadataDir + "/meta/icons/" + packageInfo.m_packageId + ".svg";
-
-    QFile manifest(metadataDir + "/meta/manifest.json");
-    if (manifest.open(QFile::ReadOnly)) {
-        QByteArray data = manifest.readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(data);
-        QJsonObject object = doc.object();
-
-        info.m_changelog = fetchVersionedChangelog(object["changelog"].toObject(), info.m_avilableVersion);
-
-        QJsonObject locales = object["locales"].toObject();
-        QJsonObject locale = locales[QLocale::system().name()].toObject();
-        if (locale.isEmpty())
-            locale = locales["en_US"].toObject();
-        QJsonObject changelog = locale["changelog"].toObject();
-        QString versionedChangelog = fetchVersionedChangelog(changelog, info.m_avilableVersion);
-
-        if (!versionedChangelog.isEmpty())
-            info.m_changelog = versionedChangelog;
+    if (versions.isEmpty()) {
+        versions = info.locale["en_US"].versions;
     }
 
-    return info;
+    for (const Versions &version : versions) {
+        qDebug() << version.version << version.changeLog;
+        if (version.version == package.m_avilableVersion) {
+            package.m_changelog = version.changeLog;
+            break;
+        }
+    }
+
+    return package;
 }
 
 AppUpdateInfo UpdateWorker::getDDEInfo()

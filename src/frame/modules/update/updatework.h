@@ -36,8 +36,10 @@
 #include <com_deepin_daemon_network.h>
 #include <com_deepin_lastoresessionhelper.h>
 #include <com_deepin_lastore_smartmirror.h>
+#include <com_deepin_appstore_metadata.h>
 
 #include "common.h"
+#include "packageinfo.h"
 
 using UpdateInter=com::deepin::lastore::Updater;
 using JobInter=com::deepin::lastore::Job;
@@ -46,6 +48,7 @@ using PowerInter=com::deepin::daemon::Power;
 using Network=com::deepin::daemon::Network;
 using LastoressionHelper=com::deepin::LastoreSessionHelper;
 using SmartMirrorInter = com::deepin::lastore::Smartmirror;
+using AppStore=com::deepin::AppStore;
 
 namespace dcc{
 namespace update{
@@ -98,7 +101,7 @@ private Q_SLOTS:
     DownloadInfo *calculateDownloadInfo(const AppUpdateInfoList &list);
 
 private:
-    AppUpdateInfo getInfo(const AppUpdateInfo &packageInfo, const QString& currentVersion, const QString& lastVersion) const;
+    AppUpdateInfo getInfo(const AppUpdateInfo &packageInfo, PackageInfo &info) const;
     AppUpdateInfo getDDEInfo();
     void distUpgradeDownloadUpdates();
     void distUpgradeInstallUpdates();
@@ -118,6 +121,7 @@ private:
     PowerInter *m_powerInter;
     Network *m_networkInter;
     SmartMirrorInter *m_smartMirrorInter;
+    AppStore *m_metadataInter;
 
     bool m_onBattery;
     double m_batteryPercentage;

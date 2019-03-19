@@ -715,6 +715,8 @@ set(UPDATE_FILES
                 modules/update/updatesettings.h
                 modules/update/updateview.h
                 modules/update/updatework.h
+                modules/update/packageinfo.h
+                modules/update/packageinfo.cpp
 )
 
 # load wacom
