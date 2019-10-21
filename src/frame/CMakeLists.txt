@@ -1002,6 +1002,8 @@ set(SYSTEMINFO_FILES
                 window/modules/systeminfo/versionprotocolwidget.cpp
                 window/modules/systeminfo/userlicensewidget.h
                 window/modules/systeminfo/userlicensewidget.cpp
+                window/modules/systeminfo/systemrestore.h
+                window/modules/systeminfo/systemrestore.cpp
 )
 
 # load update
@@ -1160,6 +1162,9 @@ pkg_check_modules(QGSettings REQUIRED gsettings-qt)
 pkg_check_modules(DDE-Network-Utils REQUIRED dde-network-utils)
 pkg_check_modules(Gio-2.0 REQUIRED gio-2.0)
 pkg_check_modules(LibNM REQUIRED libnm)
+pkg_search_module(UDisk2 REQUIRED udisks2-qt5)
+
+include_directories(AFTER ${UDisk2_INCLUDE_DIRS})
 
 set(Qt_LIBS
     Qt5::Core
@@ -1271,6 +1276,7 @@ target_include_directories(${BIN_NAME} PUBLIC
     ${LibNM_INCLUDE_DIRS}
     ${Qt5X11Extras_INCLUDE_DIRS}
     ${KF5_QT_INCLUDE_DIRS}
+    ${UDisk2_INCLUDE_DIRS}
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
@@ -1289,6 +1295,7 @@ target_link_libraries(${BIN_NAME} PRIVATE
     ${LibNM_LIBRARIES}
     ${KF5_QT_LIBRARIES}
     crypt
+    ${UDisk2_LIBRARIES}
 )
 
 # bin

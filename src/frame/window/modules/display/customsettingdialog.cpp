@@ -576,10 +576,16 @@ void CustomSettingDialog::resetDialog()
             rt.setHeight(m_monitor->h());
 
         auto mrt = m_monitor->rect();
-        auto tsize = (mrt.size() / m_monitor->scale() - rt.size()) / 2;
-        rt.moveTo(m_monitor->x() + tsize.width(), m_monitor->y() + tsize.height());
+        // auto tsize = (mrt.size() / m_monitor->scale() - rt.size()) / 2;
+        // rt.moveTo(m_monitor->x() + tsize.width(), m_monitor->y() + tsize.height());
 
-        setGeometry(rt);
+        const QPoint p = mrt.center() - rt.center();
+        move(p);
+        setFixedSize(rt.size());
+        qDebug() << p << rt.size();
+
+        // qDebug() << rt << m_monitor->rect() << m_monitor->name();
+        // setGeometry(rt);
     });
 }
 
